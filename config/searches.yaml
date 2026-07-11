@@ -1,0 +1,24 @@
+# Configuration of the CROUS search pages to monitor.
+#
+# Add or remove entries freely - the monitor loops over every item in this
+# list, so adding a new search is just adding a new block here (no code
+# changes required).
+#
+# name: a short, unique, human-readable label. It is used:
+#   - as the key under which "already seen" listing IDs are stored in the
+#     state file (state/seen_listings.json)
+#   - in the subject/body of notification emails
+#   Changing a name resets detection for that search (it will be treated as
+#   brand new the next run), so try to keep names stable once chosen.
+#
+# url: the full search URL copied from https://trouverunlogement.lescrous.fr
+#   Any filters you set on the website (bounds, occupationModes,
+#   accessibility, maxPrice, etc.) are preserved because they are just query
+#   parameters in the URL.
+
+searches:
+  - name: "Villeurbanne"
+    url: "https://trouverunlogement.lescrous.fr/tools/47/search?occupationModes=alone&occupationModes=house_sharing&accessibility=prm&bounds=4.8583622_45.7955875_4.9212614_45.7484524&locationName=Villeurbanne+%2869100%29"
+
+  - name: "Lyon"
+    url: "https://trouverunlogement.lescrous.fr/tools/47/search?occupationModes=alone&occupationModes=house_sharing&accessibility=prm&bounds=4.7718134_45.8082628_4.8983774_45.7073666&locationName=Lyon"

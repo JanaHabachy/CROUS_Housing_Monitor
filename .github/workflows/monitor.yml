@@ -1,0 +1,64 @@
+name: CROUS Housing Monitor
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub Actions schedules are best-effort and can be
+    # delayed under load, especially on the public runners - see the README
+    # troubleshooting section.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+# Avoid two runs writing/pushing state at the same time. A new scheduled
+# run replaces the need to finish an overlapping one, so we don't cancel a
+# run already in progress (that could interrupt an in-flight email send);
+# instead we simply queue.
+concurrency:
+  group: crous-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the CROUS monitor
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python main.py
+
+      - name: Persist updated state (seen listings, timestamps)
+        run: |
+          if [ -n "$(git status --porcelain state/seen_listings.json)" ]; then
+            git config user.name "crous-monitor-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add state/seen_listings.json
+            git commit -m "chore: update monitor state [skip ci]"
+            # Rebase onto the latest remote state in case another run
+            # pushed in the meantime, then push.
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          else
+            echo "No state changes to commit."
+          fi
